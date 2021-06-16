@@ -1,109 +1,201 @@
-const fs = require('fs'); // for reading/writing the tours json file
+const Tour = require('./../models/tourModel');
+const APIFeatures = require('./../utils/apiFeatures');
 
-// -----------------------
-// * 2) ROUTE HANDLERS/CONTROLLERS - Param Middlewares and Route Controllers are set but not executed, they run in tourRoutes.js
-
-// * Handling GET requests
-// * before sending the data ('/api/v1/tours') to client. we first READ it before/outside the route handler
-// * cause top-level runs only once after app startup // note: google __dirname
-const tours = JSON.parse(fs.readFileSync(`${__dirname}/../dev-data/data/tours-simple.json`)); // parse [] of JSON {}s to [] of javascript {}s
-// * now we can send it back to client
-
-// * Express relies only on middleware stack pipeline on the req/res cycle.
-// * Param middlewares check parameters during the middleware stack running before the last middleware.
-
-// * Param Middleware function as exports.prop to be exporteds - Middleware is set but not executed
-exports.checkID = (req, res, next, value) => {
-    console.log(`Tour id is: ${value}`); // /api/v1/tours/5 -> value = 5
-    if (req.params.id * 1 > tours.length) { // if /:id is greater than number os tours - invalid id
-        return res.status(404).json({ // if invalid, return response w/ error and stop req/res cycle
-            status: 'fail',
-            message: 'Invalid ID'
-        });
-    }
-    next(); // if id is valid, move request{} to next() middleware
+exports.aliasTopTours = (req, res, next) => {
+    // * Pre-filling query params for the user
+    // setting query{} properties values
+    req.query.limit = '5';
+    req.query.sort = '-ratingsAverage,price';
+    req.query.fields = 'name,price,ratingsAverage,summary,difficulty';
+    next();
 }
 
-// * Multiple middlewares - router.route('/').post(checkBody, tourController.createTour);
-// * checkBody Middleware
-exports.checkBody = (req, res, next) => {
-    if(!req.body.name || !req.body.price) { // if props dont exist
-        return res.status(400).json({ // 400 means bad request
-            status: 'error',
-            message: 'name and price properties are required'
-        });
-    }
-    next(); // move to next() middleware -> createTour
-}
+exports.getAllTours = async (req, res) => {
+    try {
+        console.log(req.query); // returns { key: value, } containing query params key and value
 
-// * when request method runs route middleware function getAllTours, by sending a response, we end the req/res cycle so no other middlewares will run
-exports.getAllTours = (req, res) => { // callback block code runs in event loop
-    // console.log(req.requestTime); // print in console the prop made in the previously executed middleware
+        // * EXECUTE QUERY
+        //          instanceName = new class(mongoose queery on Model.find(), route's request query).method()
+        // *                            (query{}, express queryString)
+        const features = new APIFeatures(Tour.find(), req.query).filter().sort().limitFields().paginate();
+        // we manipulatr query{} until the end, then we await the result, so it can come back with the requested data
 
-    // JSend Response Standard -> Status and envelope using data: { tours }
-    res.status(200).json({
-        status: 'success',
-        requestedAt: req.requestTime,
-        results: tours.length, // when sending [{}], specify []'s length
-        data: {
-            //key: value
-            // tours: tours // if same name, only type once
-            tours
-        }
-    });
-}
+        const tours = await features.query; // features{} query prop - features.query
+        // query.sort().select().skip().limit()
 
-exports.getTour = (req, res) => {
-    console.log(req.params); // req.params -> all url parameters inside {} // js object -> { id: '5' }
-
-    const id = req.params.id * 1; // conver '5' * 1 to number = 5
-    const tour = tours.find(el => el.id === id); // loop over the array and find with matching condition thru all elemens -> find(callback)
-
-    res.status(200).json({
-        status: 'success',
-        data: {
-            tour
-        }
-    });
-}
-
-exports.createTour = (req, res) => { // always send a response. Keep the request<->response cyc le
-    // console.log(req.body); // when POST request json object is send, show it in console as js object
-
-    const newId = tours[tours.length - 1].id + 1;
-    // Object.assign({}, {}) creates a new object by merging two existing objects
-    const newTour = Object.assign({id: newId}, req.body); // {id: newId}, {req.body} | req.body is the data {} we send through POST request, we dont mutate it
-
-    tours.push(newTour); // push newTour{} into const tours [{}, {}, ...]
-    // write tours-simple.json file with updated array of objects, updated normal js array we want to write, callback function
-    fs.writeFile(`${__dirname}/dev-data/data/tours-simple.json`, JSON.stringify(tours), err => { // turn JS[] into JSON format for the .json file
-        // 201 means created -> created new resource on server
-        res.status(201).json({ // response
+        // * SEND RESPONSE
+        res.status(200).json({
             status: 'success',
-            data: {
-                tour: newTour
-            }
+            results: tours.length,
+            data: { tours }
         });
-    });
-    // res.send('ok'); // WE CAN NOT SEND 2 RESPONSES -> Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client
+    } catch(err) {
+        res.status(404).json({
+            status: 'Fail',
+            message: err
+        })
+        console.log(err);
+    }
+}
+exports.getTour = async (req, res) => {
+
+    try {
+        const tour = await Tour.findById(req.params.id);
+        // Tour.findOne({ _id: req.params.id })
+
+        res.status(200).json({
+            status: 'success',
+            data: { tour }
+        });
+    } catch (err) {
+        res.status(400).json({
+            status: 'Bad request error',
+            message: err
+        })
+    }
 }
 
-exports.updateTour = (req, res) => {
-    // when we  update an object or resource, we send back ok 200 status code
-    res.status(200).json({
-        status: 'success',
-        data: {
-            tour: '<updated tour here...>'
+// * Async/Await function to handle Model.create({}) response value
+exports.createTour = async (req, res) => {
+    try {
+        // * Create documents Model.create({data we wanna store in DB}) -> returns promise we Await and then store in const
+        const newTour = await Tour.create(req.body);
+        res.status(201).json({
+            status: 'success',
+            data: { tour: newTour }
+        });
+    } catch(err) { // Send a 400 bad request response saying there was an error
+        res.status(400).json({
+            status: 'fail',
+            message: err
+        });
+    }
+}
+
+exports.updateTour = async (req, res) => {
+    try{
+        //                  Model.functionReturnsQuery(id, data, {options})
+        const tour = await Tour.findByIdAndUpdate(req.params.id, req.body, {
+            new: true,
+            runValidators: true
+        });
+
+        res.status(200).json({
+            status: 'success',
+            data: { tour }
+        });
+    }catch(err) {
+        res.status(400).json({
+            status: 'fail',
+            message: err
+        });
+    }
+}
+
+exports.deleteTour = async (req, res) => {
+    try {
+        await Tour.findByIdAndDelete(req.params.id)
+        res.status(204).json({
+            status: 'success',
+            data: null
+        });
+    } catch (err) {
+        res.status(400).json({
+            status: 'fail',
+            message: err
+        });
+    }
+}
+
+// * Aggregation Pipeline: Matching and Grouping
+exports.getTourStats = async (req, res) => { // MongoDB Framework for Data Aggregation
+    try {
+        // .aggregate() query returns an aggregate{}
+        const stats = await Tour.aggregate([ // each arr element -> stage{$}
+            {
+                $match: { ratingsAverage: { $gte: 4.5 } }
+            },
+            {
+                $group: {
+                    // _id: '$ratingsAverage', // specified field
+                    _id: { $toUpper: '$difficulty' }, // specified field
+                    numTours: { $sum: 1 }, // sum one on each element // total: 9
+                    numRatings: { $sum: '$ratingsQuantity' },
+                    avgRating: { $avg: '$ratingsAverage'},
+                    avgPrice: { $avg: '$price' },
+                    minPrice: { $min: '$price' },
+                    maxPrice: { $max: '$price' }
+                }
+            },
+            {
+                $sort: { avgPrice: 1 } // 1 means ascending
+            }
+            // {
+            //     $match: { _id: { $ne: 'EASY' } } // match not equal(ne) to 'EASY'
+            // }
+        ]);
+
+        res.status(200).json({
+            status: 'success',
+            data: { stats }
+        });
+
+    } catch (err) {
+        res.status(400).json({
+            status: 'fail',
+            message: err
+        });
+    }
+}
+exports.getMonthlyPlan = async (req, res) => {
+  try {
+    const year = req.params.year * 1; // 2021
+
+    const plan = await Tour.aggregate([
+      {
+        $unwind: '$startDates'
+      },
+      {
+        $match: {
+          startDates: {
+            $gte: new Date(`${year}-01-01`),
+            $lte: new Date(`${year}-12-31`)
+          }
         }
-    });
-}
+      },
+      {
+        $group: {
+          _id: { $month: '$startDates' },
+          numTourStarts: { $sum: 1 },
+          tours: { $push: '$name' }
+        }
+      },
+      {
+        $addFields: { month: '$_id' }
+      },
+      {
+        $project: {
+          _id: 0
+        }
+      },
+      {
+        $sort: { numTourStarts: -1 }
+      },
+      {
+        $limit: 12
+      }
+    ]);
 
-exports.deleteTour = (req, res) => {
-    // 204 means no content
-    res.status(204).json({
-        status: 'success',
-        data: null // no data is sent back
+    res.status(200).json({
+      status: 'success',
+      data: {
+        plan
+      }
     });
-}
-
-// ? Export multiple variables -> exports.variable = code; // creating multiple properties inside exports{} so they can be imported as props
+  } catch (err) {
+    res.status(404).json({
+      status: 'fail',
+      message: err
+    });
+  }
+};
