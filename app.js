@@ -10,6 +10,9 @@ const hpp = require('hpp');
 // * Cookie parser: parse cookies from incomming reqs
 const cookieParser = require('cookie-parser');
 
+// * Response compression
+const compression = require('compression');
+
 const AppError = require('./utils/appError');
 const globalErrorHandler = require('./controllers/errorController');
 const tourRouter = require('./routes/tourRoutes'); // each router is in one diff file - each of them is one small sub application
@@ -64,6 +67,9 @@ app.use(xss()); // cleans user input from malicious HTML code, by converting htm
 // ? Prevent parameter pollution - at the end to clean up query string
 // whitelist is an array of params we do allow to be duplicated
 app.use(hpp({ whitelist: ['duration', 'ratingsQuantity', 'ratingsAverage', 'maxGroupSize', 'difficulty', 'price'] }));
+
+// * Compression
+app.use(compression()); // compression() returns a midware function which compress text sent to clients
 
 // ? Test middleware
 app.use((req, res, next) => {

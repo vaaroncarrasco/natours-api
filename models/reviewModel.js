@@ -67,7 +67,6 @@ reviewSchema.statics.calcAverageRatings = async function(tourId) { // this kw po
             }
         }
     ]);
-    console.log(stats);
 
     if (stats.length > 0) {
         await Tour.findByIdAndUpdate(tourId, { // just await for the upload to current tour, dont store promise

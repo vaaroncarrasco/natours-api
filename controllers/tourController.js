@@ -31,7 +31,6 @@ exports.uploadTourImages = upload.fields([ // * mutiple fields DIFF name // PLUR
 ]);
 
 exports.resizeTourImages = catchAsync(async (req, res, next) => {
-    console.log(req.files);
 
     if (!req.files.imageCover || !req.files.images) return next();
 
@@ -170,8 +169,6 @@ exports.getToursWithin = catchAsync(async (req, res, next) => {
     const radius = unit === 'mi' ? distance / 3963.2 : distance / 6378.1;
 
     if (!lat || !lng) { next(new AppError('Please provide latitude & longitude in the format lat,lng.', 400)); }
-
-    console.log(distance, lat, lng, unit);
 
     // * We should index startLocation to get the data faster
     // toursSchema.index({ startLocation: '2dsphere' });

@@ -6,7 +6,7 @@ import { showAlert } from './alert'; // file export
 // data = {,}
 export const updateSettings = async (data, type) => {
     try {
-        const url = type === 'password' ? 'http://127.0.0.1:3000/api/v1/users/updateMyPassword' : 'http://127.0.0.1:3000/api/v1/users/updateMe';
+        const url = type === 'password' ? '/api/v1/users/updateMyPassword' : '/api/v1/users/updateMe';
 
         // * no need to add route for updating user data cause we're using axios to send data as post to specific route for us
         const res = await axios({ method: 'PATCH', url, data });

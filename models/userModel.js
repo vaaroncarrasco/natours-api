@@ -105,7 +105,7 @@ userSchema.methods.createPasswordResetToken = function() {
     // We store the hashed token in DB to compare it with the token the user sends back to allow access to /resetPassword
     this.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex'); // we dont store plain tokens in DB for security reasons
 
-    console.log({ resetToken }, this.passwordResetToken);
+    // console.log({ resetToken }, this.passwordResetToken);
 
     // Expire time 10 minutes
     this.passwordResetExpires = Date.now() + 10 * 60 * 1000; // now + 10mins
