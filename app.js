@@ -13,6 +13,9 @@ const cookieParser = require('cookie-parser');
 // * Response compression
 const compression = require('compression');
 
+// * CORS
+const cors = require('cors');
+
 const AppError = require('./utils/appError');
 const globalErrorHandler = require('./controllers/errorController');
 const tourRouter = require('./routes/tourRoutes'); // each router is in one diff file - each of them is one small sub application
@@ -31,6 +34,28 @@ app.set('views', path.join(__dirname, 'views')); // path relative to where we la
 
 
 // 1) GLOBAL MIDDLEWARES
+
+// * Implement cors for simple requests -> GET/POST reqs
+app.use(cors());
+// Access-Control-Allow-Origin * // all
+
+// CORS on specific route
+// app.use('/api/v1/reviews', cors(), reviewRouter);
+
+
+// Access-Control-Allow-Origin SPECIFIC
+// api.natours.com, front-end natours.com
+// app.use(cors({
+//   origin: 'https://www.natours.com'
+// }))
+
+// * Allowing non-simple requests -> PUT/PATCH/DELETE/ sending cookies or non standard headers /
+// Browser automaitcally issues the preflight phase on (Non-simple requests)
+// Browser sends an options HTTP method request to make sure the non-simple request is allowed
+// Server needs to respond to that options HTTP method request; it is like GET/POST/PATCH... etc
+app.options('*', cors()); // * Allowing non-simple reqs on every route
+// app.options('api/v1/tours/:id', cors); // on specific route
+
 // ? Serving static files
 // 127.0.0.1:3000/overview.html // dont include directory on url cause brwsr wont find it and search it as root
 app.use(express.static(path.join(__dirname, 'public'))); // html css img etc
