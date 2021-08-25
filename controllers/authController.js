@@ -16,22 +16,19 @@ const signToken = id => {
 
 // ? Cookies:
 // ? Small piece of text server sends to clients, browser stores cookie and sends back along all future requests to the server the cookie came from
-const createSendToken = (user, statusCode, res) => {
+const createSendToken = (user, statusCode, req, res) => {
     const token = signToken(user._id);
-    const cookieOptions = {
-        expires: new Date( Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000 ),
-        // secure: true, // * cookie only will be sent on https - secured/encrypted connection -> production only
-        httpOnly: true // * cookie CAN NOT be accessed by browser -> prevent XSS attacks
-        /*
-            "A cookie with the HttpOnly attribute is inaccessible to the JavaScript Document.cookie API; it is sent only to the server.
-            For example, cookies that persist server-side sessions don't need to be available to JavaScript, and should have the HttpOnly attribute.
-            This precaution helps mitigate cross-site scripting (XSS) attacks."
-        */
-    }
-    if (process.env.NODE_ENV === 'production') cookieOptions.secure = true;
-
+     /*
+        "A cookie with the HttpOnly attribute is inaccessible to the JavaScript Document.cookie API; it is sent only to the server.
+        For example, cookies that persist server-side sessions don't need to be available to JavaScript, and should have the HttpOnly attribute.
+        This precaution helps mitigate cross-site scripting (XSS) attacks."
+    */
     // .cookie('name', value, optionsObj{}) -> cookie name is a UNIQUE value -> if created twice, cookie is overwritten
-    res.cookie('jwt', token, cookieOptions);
+    res.cookie('jwt', token, {
+        expires: new Date(Date.now() + process.env.JWT_EXPIRES_IN * 24 * 60 * 60 * 1000),
+        httpOnly: true,
+        secure: req.secure || req.headers['x-forwarded-proto'] === 'https'
+    });
 
     // Remove user password from output -> not removing it from DB tho
     user.password = undefined;
@@ -54,7 +51,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     const url = `${req.protocol}://${req.get('host')}/me`;
     await new Email(newUser, url).sendWelcome();
 
-    createSendToken(newUser, 201, res);
+    createSendToken(newUser, 201, req, res);
 });
 
 exports.login = catchAsync(async (req, res, next) => {
@@ -71,7 +68,7 @@ exports.login = catchAsync(async (req, res, next) => {
     }
 
     // 3) If all good, send token to client
-    createSendToken(user, 200, res);
+    createSendToken(user, 200, req, res);
 });
 
 exports.logout = (req, res) => {
@@ -218,7 +215,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
 
 
     // 4) Log the user in, send JWT
-    createSendToken(user, 200, res);
+    createSendToken(user, 200, req, res);
 });
 
 exports.updatePassword = catchAsync( async (req, res, next) => {
@@ -236,5 +233,5 @@ exports.updatePassword = catchAsync( async (req, res, next) => {
     await user.save();
 
     // 4) Log user in send JWT
-    createSendToken(user, 200, res);
+    createSendToken(user, 200, req, res);
 });

@@ -23,6 +23,8 @@ const viewRouter = require('./routes/viewRoutes'); // each router is in one diff
 
 const app = express(); // we only use app = express(); to config everything that has to do with the Express application
 
+app.enable('trus proxy');
+
 // * PUG ENGINE SETUP
 app.set('view engine', 'pug');
 app.set('views', path.join(__dirname, 'views')); // path relative to where we launch project
