@@ -200,11 +200,11 @@ toursSchema.pre(/^find/, function(next) { // run before all .find*() queries to 
 
 
 // * Query middleware - run POST every find...() query execution
-toursSchema.post(/^find/, function(docs, next){
-  console.log(`Query took ${Date.now() - this.start} milliseconds!`); // QUery took 68 milliseconds!
-  // console.log(docs); // log requested documents
-  next();
-});
+// toursSchema.post(/^find/, function(docs, next){
+//   console.log(`Query took ${Date.now() - this.start} milliseconds!`); // QUery took 68 milliseconds!
+//   // console.log(docs); // log requested documents
+//   next();
+// });
 
 // * Aggregation Middleware -pre/post aggregation execution
 // toursSchema.pre('aggregate', function(next) { // runs before aggregate()
